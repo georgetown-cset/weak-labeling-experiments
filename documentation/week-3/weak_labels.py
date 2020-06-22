@@ -10,16 +10,29 @@ from snorkel.labeling import LFAnalysis
 from snorkel.labeling import labeling_function
 from snorkel.labeling.model import LabelModel
 from snorkel.labeling.model import MajorityLabelVoter
-from sklearn.model_selection import train_test_split
 from snorkel.labeling import filter_unlabeled_dataframe
+from snorkel.analysis import get_label_buckets
 
 
-# import data
-df_train = data_import.get_data(local=True).sample(
-    frac=1, random_state=120).reset_index(drop=True)
-df_test = pd.read_csv("../week1-data/merged_data.csv",
-                      prefix=None).sample(frac=1, random_state=120).reset_index(drop=True)
+# import test data
+df_test = pd.read_csv("../week1-data/merged_data.csv", prefix=None)\
+    .drop_duplicates(subset="PaperId", keep="last")\
+    .sample(frac=1, random_state=120)\
+    .reset_index(drop=True)
 df_test.columns = map(str.lower, df_test.columns)
+
+# import training data
+df_train = data_import\
+    .get_data(local=True)\
+    .sample(frac=1, random_state=120)\
+    .drop_duplicates(subset="paperid", keep="last")\
+    .reset_index(drop=True)
+
+# drop duplicates in the training and testing sets
+cond_drop_duplicates = df_train['paperid'].isin(df_test['paperid'])
+df_train.drop(df_train[cond_drop_duplicates].index, inplace=True)
+
+# remove all abstracts from the test set with no abstract
 df_test = df_test[df_test.abstract.notnull()]
 
 # set the label values
@@ -73,11 +86,14 @@ keyword_lidar = make_keyword_lf(
     keywords=["lidar", "laser detection"], label=IRRELEVANT)
 keyword_radar = make_keyword_lf(
     keywords=["radar", "vehicle radar"], label=IRRELEVANT)
+keyword_computer_vision = make_keyword_lf(
+    keywords=["computer vision", "opencv"], label=IRRELEVANT
+)
 
 # Heuristic functions
 @labeling_function()
 def heuristics_lookup(data_point):
-    # Short or missing abstract with not relevant keywords in paper title
+    # Short or missing abstract
     return IRRELEVANT if (len(data_point.abstract.lower()) < 10) else ABSTAIN
 
 
@@ -92,6 +108,7 @@ lfns = [
     keyword_driverless_vehicle,
     keyword_lidar,
     keyword_radar,
+    keyword_computer_vision,
     heuristics_lookup
 ]
 
@@ -106,21 +123,45 @@ print(lf_analysis_train)
 
 # Build noise aware majority model
 majority_model = MajorityLabelVoter()
-
 label_model = LabelModel(cardinality=2, verbose=True)
-label_model.fit(L_train=L_train, n_epochs=600, log_freq=100, seed=120)
+label_model.fit(L_train=L_train, n_epochs=800, log_freq=100, seed=120)
+
+# predicted labels
+Y_pred = label_model.predict(L_test, tie_break_policy="abstain")
+
 majority_acc = majority_model.score(
-    L=L_test, Y=Y_test, tie_break_policy="random")["accuracy"]
+    L=L_test, Y=Y_test, tie_break_policy="abstain", metrics=["f1", "accuracy"])
 label_model_acc = label_model.score(
-    L=L_test, Y=Y_test, tie_break_policy="random")["accuracy"]
+    L=L_test, Y=Y_test, tie_break_policy="abstain", metrics=["f1", "accuracy"])
 
 
-print(f"{'Majority Vote Accuracy:':<25} {majority_acc * 100:.1f}%")
-print(f"{'Label Model Accuracy:':<25} {label_model_acc * 100:.1f}%")
+print(f"{'Majority Vote Accuracy:':<25} {majority_acc['accuracy'] * 100:.1f}%")
+print(f"{'Majority Vote F1 Score:':<25} {majority_acc['f1'] * 100:.1f}%")
 
+print(
+    f"\n{'Label Model Accuracy:':<25} {label_model_acc['accuracy'] * 100:.1f}%")
+print(f"{'Label Model F1 Score:':<25} {label_model_acc['f1'] * 100:.1f}%")
+
+# how many documents abstained
 probs_train = majority_model.predict_proba(L=L_train)
 df_train_filtered, probs_train_filtered = filter_unlabeled_dataframe(
     X=df_train, y=probs_train, L=L_train
 )
 
 print(f"\nABSTAIN: {len(df_train_filtered)}")
+
+#print(df_test[df_test[df_test['relevancy'] == "irrelevant"], 'labels'])
+buckets = get_label_buckets(Y_test, Y_pred)
+
+true_positives, false_positives, true_negatives, false_negatives = (
+    buckets.get((1, 1)), buckets.get((1, 0)), buckets.get((0, 0)), buckets.get((0, 1)))
+print("\n")
+print(f"true positives: {len(true_positives)}")
+print(f"false positives: {false_positives}")
+print(f"false negatives: {len(false_negatives)}")
+print(f"true_negatives: {len(true_negatives)}")
+
+print("\n")
+
+print(f"abstained positives {len(buckets[(1, -1)])}")
+print(f"abstained negatives {len(buckets[(0, -1)])}")
