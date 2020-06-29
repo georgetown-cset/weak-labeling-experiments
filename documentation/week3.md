@@ -11,7 +11,7 @@ __Friday__ -  Juneteenth (Georgetown University Holiday) 🎉
 
 ### Overview
 This week I worked on tweaking the labeling functions from last week to improve accuracy. I scaled the training dataset     
-from about 200 data points to about 7000 data points. (See week-3/data_import.py). With 200 data points, both the     
+from about 200 data points to about 7000 data points. (See `$PROJECT_ROOT/weak_labeling/data_import.py`). With 200 data points, both the     
 `MajorityLabelVoter` and the `LabelModel` produced an accuracy score of about 68%. The `MajorityLabelVoter` takes the     
 majority vote on a per-data point basis: if more LFs voted RELEVANT than IRRELEVANT, label it RELEVANT (and vice versa).    
 The `LabelModel` produces a single set of noise-aware training labels, that is, confidence-weighted labels which can be     
@@ -51,6 +51,15 @@ by about 1.5 percentage points.
 +    L=L_test, Y=Y_test, tie_break_policy="abstain", metrics=["f1", "accuracy"])
 ```
 
+The changes above resulted in the following model improvements to the model accuracy
+```text
+Majority Vote Accuracy:   90.0%
+Majority Vote F1 Score:   94.3%
+
+Label Model Accuracy:     86.8%
+Label Model F1 Score:     92.5%
+```
+
 I then proceeded to calculate how many documents abstained during the training phase of the model. I'm not exactly sure what the    
 impact of the abstained documents have on the overall performance yet, but I plan to look into this some time next week.    
 Lastly, I did some preliminary inquires into false positives, false negatives etc. And Below are some of the results I could get
@@ -74,10 +83,10 @@ abstained negatives 106
 - `f1 score (f1_micro in sckitlearn)` calculate metrics globally by counting the total true positives, false negatives and false positives.
   
 ### Summary of Task list
-- [x] Write summary for results   
-- [x] Understand what F1 Score is and how it relates to the accuracy of the LFs I wrote      
-      (true positives, false positives, true negatives etc)
-- [x] Write documentation of everything I did this week
+- [x] ~~Write summary for results~~   
+- [x] ~~Understand what F1 Score is and how it relates to the accuracy of the LFs I wrote~~      
+      ~~(true positives, false positives, true negatives etc)~~
+- [x] ~~Write documentation of everything I did this week~~
 - [ ] Write unit tests for data import function and keyword LF definition    
 - [ ] Measure precise time it takes to fit the LabelModel on the test data
 - [ ] Measure if class imbalance in gold set affects model accuracy 
