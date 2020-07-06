@@ -1,6 +1,7 @@
 # import dependencies
 import argparse
 import datetime
+import json
 from typing import List
 from time import time
 
@@ -149,13 +150,13 @@ def model_analysis(label_model: LabelModel, training_set: pd.DataFrame, L_train:
 def train_model(training_data: pd.DataFrame, testing_data: pd.DataFrame, L_train=np.ndarray, save_model=True) -> LabelModel:
     # Build noise aware majority model
     model = LabelModel(cardinality=2, verbose=True)
-    model.fit(L_train=L_train, n_epochs=800, log_freq=100, class_balance=[0.673, 0.327])
+    model.fit(L_train=L_train, n_epochs=800, log_freq=100)#, class_balance=[0.673, 0.327])
     if(save_model):
         model.save("../output/model_export/saved_label_model.pkl")
     return model
 
 
-def main(output_path: str, training_data: str, gold_labels: str) -> None:
+def main(output_path: str, training_data: str, gold_labels: str, label_output_path: str) -> None:
     df_train, df_test = prepare_data(gold_label_path=gold_labels)
     L_train, L_test, lfns = LF_applier(df_train, df_test)
     Y_test = np.asarray(list(map(encode_labels, df_test["relevancy"].tolist())), dtype=np.intc)
@@ -167,6 +168,24 @@ def main(output_path: str, training_data: str, gold_labels: str) -> None:
 
     print(f"Training time: {end_train_time - begin_train_time}")
     model_analysis(label_model=label_model, training_set=df_train, L_train=L_train, L_test=L_test, Y_test=Y_test, lfs=lfns, output_file=output_path)
+    # get both integer and probability labels for data, filtering out unlabeled data points: https://www.snorkel.org/use-cases/01-spam-tutorial#filtering-out-unlabeled-data-points
+    int_labels, prob_labels = label_model.predict(L=L_train, return_probs=True)
+    probs_df_train_filtered, probs_train_filtered = filter_unlabeled_dataframe(
+                X=df_train, y=prob_labels, L=L_train
+    )
+    int_df_train_filtered, int_train_filtered = filter_unlabeled_dataframe(
+                X=df_train, y=int_labels, L=L_train
+    )
+    # write out both labels. In the probability outputs, p_rel is the second probability listed
+    assert list(probs_df_train_filtered["paperid"]) == list(int_df_train_filtered["paperid"])
+    with open(label_output_path, mode="w") as out:
+        for idx, paper_id in enumerate(probs_df_train_filtered["paperid"]):
+            out.write(json.dumps({
+                "id": paper_id,
+                # cast to int and float to get rid of nonserializable numpy types
+                "is_rel": int(int_train_filtered[idx]),
+                "p_rel": float(probs_train_filtered[idx][1])
+            })+"\n")
 
 
 if __name__ == "__main__":
@@ -175,10 +194,11 @@ if __name__ == "__main__":
     parser.add_argument("--output", help="output file for model analytics")
     parser.add_argument("--data", help="path to training dataset")
     parser.add_argument("--golds", help="path to gold labels")
+    parser.add_argument("--label_out", help="path to file where integer outputs should be written", default="labels.jsonl")
 
     # parse arguments
     args = parser.parse_args()
     golds = args.golds if args.golds is not None else "../data/testing_data.csv"
     output_file_name = args.output if args.output is not None else "output"
 
-    main(output_path=output_file_name, training_data=args.data, gold_labels=golds)
+    main(output_path=output_file_name, training_data=args.data, gold_labels=golds, label_output_path=args.label_out)
