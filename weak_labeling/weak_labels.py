@@ -66,12 +66,11 @@ def make_keyword_lf(keywords: list, label: int = RELEVANT):
 
 def LF_applier(df_train: pd.DataFrame, df_test: pd.DataFrame):
     # Make keywords
-    keyword_vehicle = make_keyword_lf(keywords=["vehicle"])
     keyword_vehicle_detection = make_keyword_lf(keywords=["vehicle detection", "vehicle detector"])
     keyword_driver_identification = make_keyword_lf(keywords=["driver identification", "driver identifier"])
     keyword_human_detection = make_keyword_lf(keywords=["human detection", "human detector"])
     keyword_license_info = make_keyword_lf(keywords=["license plate", "license number"])
-    keyword_recognition = make_keyword_lf(keywords=["recognition", "vehicle recognition", "vehicle identification"])
+    keyword_vehicle_recognition = make_keyword_lf(keywords=["vehicle recognition", "vehicle identification"])
     keyword_driving_system = make_keyword_lf(keywords=["driving system"])
     keyword_autonomous_vehicle = make_keyword_lf(keywords=["autonomous vehicle"], label=IRRELEVANT)
     keyword_driverless_vehicle = make_keyword_lf(keywords=["driverless cars", "driverless vehicle", "unmanned vehicle"], label=IRRELEVANT)
@@ -84,7 +83,7 @@ def LF_applier(df_train: pd.DataFrame, df_test: pd.DataFrame):
         keyword_vehicle_detection,
         keyword_human_detection,
         keyword_driver_identification,
-        keyword_recognition,
+        keyword_vehicle_recognition,
         keyword_driving_system,
         keyword_autonomous_vehicle,
         keyword_driverless_vehicle,
@@ -139,10 +138,10 @@ def model_analysis(label_model: LabelModel, training_set: pd.DataFrame, L_train:
         output_file.write(f"\n{'Precision Score:':<25} {p_score * 100:.2f}%")
         output_file.write(f"\n{'Recall Score:':<25} {r_score * 100:.2f}%")
         output_file.write(f"\n{'Abstained Data Points:':<25} {len(df_train_filtered)}")
-        output_file.write(f"\n{'True Positives:':<25} {len(true_positives)}")
-        output_file.write(f"\n{'False Positives:':<25} {false_positives}")
-        output_file.write(f"\n{'False Negatives:':<25} {len(false_negatives)}")
-        output_file.write(f"\n{'True Negatives:':<25} {len(true_negatives)}")
+        output_file.write(f"\n{'True Positives:':<25} {len(true_positives or [])}")
+        output_file.write(f"\n{'False Positives:':<25} {len(false_positives or [])}")
+        output_file.write(f"\n{'False Negatives:':<25} {len(false_negatives or [])}")
+        output_file.write(f"\n{'True Negatives:':<25} {len(true_negatives or [])}")
         output_file.write(f"\n{'Abstained Positives:':<25} {len(buckets[(1, -1)])}")
         output_file.write(f"\n{'Abstained Negatives:':<25} {len(buckets[(0, -1)])}")
 
@@ -150,7 +149,7 @@ def model_analysis(label_model: LabelModel, training_set: pd.DataFrame, L_train:
 def train_model(training_data: pd.DataFrame, testing_data: pd.DataFrame, L_train=np.ndarray, save_model=True) -> LabelModel:
     # Build noise aware majority model
     model = LabelModel(cardinality=2, verbose=True)
-    model.fit(L_train=L_train, n_epochs=800, log_freq=100)#, class_balance=[0.673, 0.327])
+    model.fit(L_train=L_train, n_epochs=800, log_freq=100)  # , class_balance=[0.673, 0.327])
     if(save_model):
         model.save("../output/model_export/saved_label_model.pkl")
     return model
@@ -171,10 +170,10 @@ def main(output_path: str, training_data: str, gold_labels: str, label_output_pa
     # get both integer and probability labels for data, filtering out unlabeled data points: https://www.snorkel.org/use-cases/01-spam-tutorial#filtering-out-unlabeled-data-points
     int_labels, prob_labels = label_model.predict(L=L_train, return_probs=True)
     probs_df_train_filtered, probs_train_filtered = filter_unlabeled_dataframe(
-                X=df_train, y=prob_labels, L=L_train
+        X=df_train, y=prob_labels, L=L_train
     )
     int_df_train_filtered, int_train_filtered = filter_unlabeled_dataframe(
-                X=df_train, y=int_labels, L=L_train
+        X=df_train, y=int_labels, L=L_train
     )
     # write out both labels. In the probability outputs, p_rel is the second probability listed
     assert list(probs_df_train_filtered["paperid"]) == list(int_df_train_filtered["paperid"])

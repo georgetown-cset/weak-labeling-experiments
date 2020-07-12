@@ -1,7 +1,6 @@
 import pandas as pd
 import os
 import csv
-import json
 import re
 from os import path
 import numpy as np
@@ -11,7 +10,7 @@ project_ID = "***REMOVED***"
 client = bigquery.Client(project=project_ID)
 
 
-def build_query(query_regex: str, limit=1000):
+def build_query(query_regex: str, limit: int):
     return f"""
             select paper.PaperId, paper.PaperTitle, paper.Abstract, RAND() as rand
                 from gcp_cset_mag.PapersWithAbstracts paper
@@ -53,25 +52,30 @@ def get_training_data(training_data_path: str, from_local_disk: bool, save_to_lo
         return df
 
 
-def regex_from_keywords(words: str):
-    word_list = words.split(sep=",")
-    word_list = map(lambda w: w.strip().replace(" ", ".*"), word_list)
+def regex_from_keywords(words: list):
+    word_list = map(lambda w: w.strip().replace(" ", ".*"), words)
     reg_exp = f"r\"(?i){'|'.join(word_list)}\""
     return str(reg_exp)
 
 
-def wipo_training_data(keywords_path: str = "../data/keyword_categories_custom.csv", train_size: int = 10):
+def wipo_training_data(keywords_path: str = "../data/keyword_categories_custom.csv", training_data_path: str = "../data/wipo_training_data.csv", train_size: int = 10):
     keywords_categories = pd.read_csv(keywords_path, prefix=None)
-    with open(file="../data/train.csv", mode="a+") as training_data_dump:
+    with open(file=training_data_path, mode="a+") as training_data_dump:
+        regex_list = []
         for words in keywords_categories.ImprovedLikelyPhrases:
-            reg_exp = regex_from_keywords(words=words)
-            data_query = build_query(reg_exp, 10)
-            likely_relevant = pd.read_gbq(
-                query=data_query, project_id=project_ID, dialect="standard")
-            likely_relevant.to_csv(training_data_dump, mode="a",  encoding="utf-8", header=False, index=False,
-                                   quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+            words_reg_exp = words.split(sep=", ")
+            regex_list.extend(words_reg_exp)
+        regex_list = list(set(regex_list))
+        reg_exp = regex_from_keywords(words=regex_list)
+        data_query = build_query(query_regex=reg_exp, limit=train_size)
+
+        # get the data from bigquery and save to a csv file locally
+        df_training_data = pd.read_gbq(query=data_query, project_id=project_ID, dialect="standard")
+        df_training_data.to_csv(training_data_dump, mode="a",  encoding="utf-8", header=os.path.exists(training_data_path), index=False,
+                                quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
 
 
 if __name__ == "__main__":
     # get_training_data(training_data_path="../data/training_data.csv", from_local_disk=True, save_to_local=True)
-    wipo_training_data()
+    # train_size = n * 54, where n is the number of data points per application field (n = 10)
+    wipo_training_data(train_size=530)

@@ -139,4 +139,4 @@ cython_debug/
 
 # VS Code workspace configs
 .vscode/
-output/logs/*.txt
+output/
