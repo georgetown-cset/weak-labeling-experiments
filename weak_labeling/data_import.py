@@ -53,7 +53,7 @@ def get_training_data(training_data_path: str, from_local_disk: bool, save_to_lo
 
 
 def regex_from_keywords(words: list):
-    word_list = map(lambda w: w.strip().replace(" ", ".*"), words)
+    word_list = map(lambda w: w.strip().replace(" ", r"(\W*\w*){0,4}"), words)
     reg_exp = f"r\"(?i){'|'.join(word_list)}\""
     return str(reg_exp)
 
@@ -76,6 +76,5 @@ def wipo_training_data(keywords_path: str = "../data/keyword_categories_custom.c
 
 
 if __name__ == "__main__":
-    # get_training_data(training_data_path="../data/training_data.csv", from_local_disk=True, save_to_local=True)
-    # train_size = n * 54, where n is the number of data points per application field (n = 10)
-    wipo_training_data(train_size=530)
+    get_training_data(training_data_path="../data/training_data.csv", from_local_disk=True, save_to_local=True)
+    wipo_training_data(train_size=530000)
