@@ -1,9 +1,10 @@
 import csv
 import json
+import os
 import re
 import statistics
 
-from google.cloud import bigquery
+from multiprocessing import Pool
 
 
 def format_keyword(kw: str):
@@ -18,10 +19,7 @@ def get_cat_id_to_keywords(kw_path: str):
     return cat_id_to_keywords
 
 
-def estimate_class_balance():
-    client = bigquery.Client(project="***REMOVED***")
-    cat_to_keywords = get_cat_id_to_keywords("../data/keyword_categories_custom.csv")
-    print(cat_to_keywords)
+def get_frequencies(fi: str, cat_to_keywords: dict):
     cat_counts, kw_counts = {}, {}
     for cat, kws in cat_to_keywords.items():
         cat_counts[cat] = 0
@@ -29,9 +27,8 @@ def estimate_class_balance():
             kw_counts[kw] = 0
     corpus_size = 0
 
-    for record in client.list_rows("cn498_sandbox.mag_subset_for_snorkel_eval"):
-        if corpus_size % 1000 == 0:
-            print("on "+str(corpus_size))
+    for line in open(fi):
+        record = json.loads(line)
         corpus_size += 1
         text = record["papertitle"]+" "+record["abstract"]
         for cat in cat_to_keywords:
@@ -42,6 +39,25 @@ def estimate_class_balance():
                     has_match = True
             if has_match:
                 cat_counts[cat] += 1
+    return {
+        "corpus_size": corpus_size,
+        "cat_counts": cat_counts,
+        "kw_counts": kw_counts
+    }
+
+
+def estimate_class_balance(input_dir: str):
+    cat_to_keywords = get_cat_id_to_keywords("../data/keyword_categories_custom.csv")
+
+    with Pool() as pool:
+        freq_info = pool.starmap(get_frequencies, [(os.path.join(input_dir, fi), cat_to_keywords) for fi in os.listdir(input_dir)])
+   
+    # all the elements of freq_info will have the same keys in their kw_counts and cat_counts, so we can just
+    # take the first element to get the key sets
+    one_elt = freq_info[0]
+    corpus_size = sum([e["corpus_size"] for e in freq_info])
+    kw_counts = {kw: sum([e["kw_counts"][kw] for e in freq_info]) for kw in one_elt["kw_counts"]}
+    cat_counts = {cat: sum([e["cat_counts"][cat] for e in freq_info]) for cat in one_elt["cat_counts"]}
 
     # write out the frequency with which *any* of a category's kws match
     with open('cat_total_freq.json', 'w') as out:
@@ -58,4 +74,4 @@ def estimate_class_balance():
 
 
 if __name__ == "__main__":
-    estimate_class_balance()
+    estimate_class_balance("mag_subset_for_snorkel_eval0721")
