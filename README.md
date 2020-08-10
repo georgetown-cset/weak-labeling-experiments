@@ -1,6 +1,4 @@
-# Snorkel For Programmatic Data Labeling
-![Snorkel at CSET](https://i.ibb.co/JFdcyWd/Screenshot-2020-08-05-at-14-12-09.png, "Snorkel at CSET")
-Snorkel for Programmatic Data Labeling is an experimental project at CSET with a goal of labeling datasets using weak supervision
+<center><h1>Snorkel For Programmatic Data Labeling</h1></center>
 
 ## Synopsis & Project Motivation
 In recent years, Machine Learning has slowly made its way into almost every industry. From Marketing to Agriculture and everything in between. As machine leaning models increase in complexity, so is the need for labelled training data. However, obtaining labelled training data still remains a huge bottle-neck for any machine learning application. The [Snorkel Project](https://snrokel.org) developed by a Stanford University lab and backed by Google attempts to solve this problem by using [weak supervision](https://www.snorkel.org/blog/weak-supervision).     
@@ -54,7 +52,20 @@ def lf_driver_detection(data_point):
     ```
 
 ## Examples
+Build a label model for the driver detection application area with evaluations by using gold labels
+```shell
+$ cd weak-labeling-experiments/weak_labeling
+$ python weak_labels.py --data ../data/training_data.csv
+```
 
+Build label models for a particular WIPO application area using the application area ID. In this case, our    
+the application area id is `id_0005`
+```shell
+$ cd weak-labeling-experiments/weak_labeling
+$ python lf_generator.py --wipo_id id_0005 \
+    --label_out "../output/wipo_logs/labels_for_id_0005.jsonl" \
+    --save_model "../output/model_export/model_id_0005.pkl"
+```
 
 ## Conclusion
 This project was an experimental project through which we explored the potential use cases and limitations of Snorkel. There are plans to continue exploring weak-labeling as a tool for CSET projects in the future, and this project would serve as an initial pilot to those future ventures.

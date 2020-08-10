@@ -10,14 +10,35 @@ from snorkel.labeling import (LabelingFunction, LFAnalysis, PandasLFApplier, fil
 from snorkel.labeling.model import LabelModel
 
 class LFGenerator:
+    """LF Generator generates labeling functions and a label model for an application area
+        given keywords and training data
+    """
     def __init__(self):
         self.RELEVANT = 1
         self.IRRELEVANT = 0
         self.ABSTAIN = -1
         self.PROJECT_ROOT = os.path.abspath(os.pardir)
+
+        # import training data and keywords
+        data = self.data_import()
+        df_keywords = data.get("keywords")
+
+        self.df_train = data.get("training_data")
+        self.keywords_dict = df_keywords.to_dict(orient="record")
+        self.likely_phrases = df_keywords.ImprovedLikelyPhrases
+        self.word_list_set = self.create_wordlist_set(self.likely_phrases)
         super().__init__()
 
-    def data_import(self, wipo_training_data_path=None, keywords_category_path=None):
+    def data_import(self, wipo_training_data_path: str = None, keywords_category_path: str = None):
+        """Import the training data from a csv file, along with the keywords used in generating the positive and negative labeling functions
+
+        :param wipo_training_data_path: Path to the training dataset, defaults to `PROJECT_ROOT/data/wipo_training_data.csv`
+        :type wipo_training_data_path: str, optional
+        :param keywords_category_path: Path to the keywords file, defaults to `PROJECT_ROOT/data/keyword_categories_custom.csv`
+        :type keywords_category_path: str, optional
+        :return: Returns a dictionary containing the two dataframes: the training dataset and the keywords dataframe
+        :rtype: Dict[pd.Dataframe]
+        """
         keywords_category_path = f"{self.PROJECT_ROOT}/data/keyword_categories_custom.csv" if keywords_category_path is None else keywords_category_path
         wipo_training_data_path = f"{self.PROJECT_ROOT}/data/wipo_training_data.csv" if wipo_training_data_path is None else wipo_training_data_path
         df_keywords = pd.read_csv(keywords_category_path, prefix=None)
@@ -30,6 +51,19 @@ class LFGenerator:
         }
 
     def keyword_lookup(self, data_point, keywords: list, label: int):
+        """Given a datapoint and a list of keywords, lookup which of those 
+            keywords are in the datapoint and return a label or abstain.
+            This function is at the core of the current labeling functions implementation
+
+        :param data_point: The paper title and paper abstract concatenated together
+        :type data_point: str
+        :param keywords: Keywords related to the application area
+        :type keywords: list
+        :param label: A label to assign to the labeling function. Either positive or negative
+        :type label: int
+        :return: Returns a label for the current datapoint if any keyword matches else, it abstains (returns -1)
+        :rtype: int
+        """
         current_data_point = f"{data_point.papertitle.lower()} {data_point.abstract.lower()}"
         for word in keywords:
             if (len(word.split(sep=" ")) > 2):
@@ -43,6 +77,17 @@ class LFGenerator:
         return self.ABSTAIN
 
     def make_keyword_lf(self, keywords: list, label: int, lf_name: str = None):
+        """Generate a labeling function from a keyword
+
+        :param keywords: A list of keywords which will be used to generate the labeling functions
+        :type keywords: list
+        :param label: The label to assign to the labeling function
+        :type label: int
+        :param lf_name: A unique name for the labling function
+        :type lf_name: str, optional
+        :return: returns a labeling function which implements `keyword_lookup`
+        :rtype: LabelingFunction
+        """
         labeling_function_name = f"keyword_{re.sub(' ', '_', keywords[0].strip())}"
         return LabelingFunction(
             name=labeling_function_name,
@@ -50,6 +95,13 @@ class LFGenerator:
             resources=dict(keywords=keywords, label=label))
 
     def create_wordlist_set(self, phrases: list):
+        """Create a unique set of keywords from all the keywords from various application areas
+
+        :param phrases: A list of keywords for a particular application area
+        :type phrases: list
+        :return: A unique set of keywords for all application areas
+        :rtype: Set[List]
+        """
         all_likely_phrases = []
         for phrase in phrases:
             word_list = phrase.split(sep=", ")
@@ -57,6 +109,18 @@ class LFGenerator:
         return set(all_likely_phrases)
 
     def generate_lfs(self, word_list: set, keywords_dict: List[dict] = None, wipo_id: str = None):
+        """Programmatically generate a dictionary of labeling functions for each WIPO application area
+
+        :param word_list: A unique set of all the keywords across various application areas
+        :type word_list: set
+        :param keywords_dict: A dictionary of keywords for the specific application area, defaults to None
+        :type keywords_dict: List[dict], optional
+        :param wipo_id: The unique id of the application area, defaults to None
+        :type wipo_id: str, optional
+        :return: Returns a dictionary with the `wipo_id` as the key and a list of positive and negative
+            labeling functions as the values
+        :rtype: [type]
+        """
         lfs = {}
         if(wipo_id):
             keywords_dict = list(
@@ -71,6 +135,19 @@ class LFGenerator:
         return lfs
 
     def train_model(self, df_train: pd.DataFrame, application_area_lfs: list, analysis_path: str = "output", label_output_path: str = "labels.jsonl", save_model_path: str = None):
+        """Using our labeling functions, we can train a probabilistic model which is able to generate weak labels for our data points
+
+        :param df_train: The training data for the model
+        :type df_train: pd.DataFrame
+        :param application_area_lfs: A list of labeling functions to use in training the Label Model
+        :type application_area_lfs: list
+        :param analysis_path: Folder path where the model output should be stored, defaults to `PROJECT_ROOT/output`
+        :type analysis_path: str, optional
+        :param label_output_path: Path to file where probabilistic labels generated by the model should be stored, defaults to "labels.jsonl"
+        :type label_output_path: str, optional
+        :param save_model_path: A path to where the Label Model should be save at. If no path is provided, the model is not saved
+        :type save_model_path: str, optional
+        """
         file_name_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         applier = PandasLFApplier(lfs=application_area_lfs)
         L_train = applier.apply(df=df_train)
@@ -107,16 +184,6 @@ if __name__ == "__main__":
     # create labeling function generator
     LFG = LFGenerator()
 
-    # import training data and keywords
-    data = LFG.data_import()
-    df_train = data.get("training_data")
-    df_keywords = data.get("keywords")
-    keywords_dict = df_keywords.to_dict(orient="record")
-
-    # get set of likely phrases
-    likely_phrases = df_keywords.ImprovedLikelyPhrases
-    word_list_set = LFG.create_wordlist_set(likely_phrases)
-
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--wipo_id", help="wipo id for lf generation. will generate lfs for all wipo application areas if left blank")
@@ -125,11 +192,11 @@ if __name__ == "__main__":
     parser.add_argument("--analysis_path", help="path to file where model analysis summary should be written")
     args = parser.parse_args()
 
-    lfs = LFG.generate_lfs(word_list=word_list_set,
-                           keywords_dict=keywords_dict, wipo_id=args.wipo_id)
+    lfs = LFG.generate_lfs(word_list=LFG.word_list_set,
+                           keywords_dict=LFG.keywords_dict, wipo_id=args.wipo_id)
     pool = Pool()
     pool.starmap(LFG.train_model, [(
-        df_train,
+        LFG.df_train,
         application_area_lfs,
         args.analysis_path or key,
         args.label_out,
