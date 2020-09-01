@@ -1,9 +1,6 @@
 <center><h1>Snorkel For Programmatic Data Labeling</h1></center>
 
-## Synopsis & Project Motivation
-In recent years, Machine Learning has slowly made its way into almost every industry. From Marketing to Agriculture and everything in between. As machine leaning models increase in complexity, so is the need for labelled training data. However, obtaining labelled training data still remains a huge bottle-neck for any machine learning application. The [Snorkel Project](https://snrokel.org) developed by a Stanford University lab and backed by Google attempts to solve this problem by using [weak supervision](https://www.snorkel.org/blog/weak-supervision).     
-
-This project attempts to use Snorkel to create weak labels for large amounts of training data at CSET using weak supervision. The data is primarily paper abstracts, which we attempt to explore their relevance to various [WIPO Application Areas](https://wipo.org)
+This project (Collins Nji's summer internship project at CSET) attempts to use [Snorkel](https://www.snorkel.org) to create weak labels for large amounts of training data at CSET using weak supervision. The data is primarily paper abstracts, which we attempt to explore their relevance to various [WIPO Application Areas](https://wipo.org)
 
 ## Project Structure
 This project is split into two phases. Phase 1 of the project explores creating weak labels for paper abstracts in the Driver Detection WIPO application area. This phase of the project also involves a set of evaluations performed throughout the project, as well as hand labelled data used for the evaluations. PHase 2 of the project involves scaling the project to cover all other WIPO application areas (54 total). It also involves scaling the training data and the labeling functions. This phase of the project involves a different method of model evaluation since there were no gold labels to run the traditional evaluations.   
@@ -12,7 +9,7 @@ The [documentation directory](documentation/), contains weekly documentation for
 
 
 ## Project Implementation & Experiments
-At its core, Snorkel uses labelling functions to create weak labels for datasets. A labelling function is a simple rule-based function that labels a data point. These functions are often written by a domain expert in the field of study, and they could range from simple heuristic functions like a function that checks the word length of a data point to more complex functions that can employ an external knowledge-base or a third party model. The output of labelling functions are used to create a probabilistic or generative model, which is then creates the weak labels for each data point, along with a confidence value for each label. 
+Snorkel uses labelling functions to create weak labels for datasets. A labelling function is a simple rule-based function that labels a data point. These functions are often written by a domain expert in the field of study, and they could range from simple heuristic functions like a function that checks the word length of a data point to more complex functions that can employ an external knowledge-base or a third party model. The output of labelling functions are used to create a probabilistic or generative model, which is then creates the weak labels for each data point, along with a confidence value for each label. 
 
 In phase 1 of this project, we attempt to label papers as either relevant or irrelevant to the Driver Detection application area. It is worth knowing that labeling functions either label a data point or abstain (no label). 
 > Note: A data point is the paper title and abstract concatenated together. 
