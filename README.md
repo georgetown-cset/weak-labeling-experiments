@@ -1,6 +1,6 @@
 <center><h1>Snorkel For Programmatic Data Labeling</h1></center>
 
-This project (Collins Nji's summer internship project at CSET) attempts to use [Snorkel](https://www.snorkel.org) to create weak labels for large amounts of training data at CSET using weak supervision. The data is primarily paper abstracts, whose relevance to various [WIPO Application Areas](https://wipo.org) we explore.
+This project (Collins Nji's summer internship project at CSET) attempts to use [Snorkel](https://www.snorkel.org) to create weak labels for large amounts of training data at CSET using weak supervision. The data is primarily paper abstracts, whose relevance to various [WIPO Application Areas](https://www.wipo.int) we explore.
 
 ## Project Structure
 This project is split into two phases. Phase 1 of the project explores creating weak labels for paper abstracts in the Driver Detection WIPO application area. This phase of the project also involves a set of evaluations performed throughout the project, as well as hand labelled data used for the evaluations. Phase 2 involves scaling the project to cover all other WIPO application areas (54 total). It also involves scaling the training data and the labeling functions. This phase of the project involves a different method of model evaluation since there were no gold labels to run the traditional evaluations.
@@ -22,6 +22,8 @@ data_point = "paper abstract..."
 def lf_driver_detection(data_point):
     return RELEVANT if "driver detection" in data_point else ABSTAIN
 ```
+
+In phase 2, we experimented with programmatically constructing LabelModels from lists of keywords for each WIPO application area.
 
 ## Running the Project
 > This project requires Python 3
@@ -65,7 +67,7 @@ $ python lf_generator.py --wipo_id id_0005 \
 ```
 
 ## Conclusion
-This project was an experimental project through which we explored the potential use cases and limitations of Snorkel. There are plans to continue exploring weak-labeling as a tool for CSET projects in the future, and this project would serve as an initial pilot to those future ventures.
+This project was an experimental project through which we explored the potential use cases and limitations of Snorkel. There are plans to continue exploring weak-labeling as a tool for CSET projects in the future, and this project served as an initial pilot to those future ventures.
 
 ## Contributors
 Intern: [Collins Nji](https://github.com/collinsnji)    
