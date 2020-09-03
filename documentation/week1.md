@@ -13,7 +13,7 @@ I then wrote a query on the NormalizedNames column in the FieldsOfStudy table tr
 
 I started by running the following query:
 ```sql
-SELECT distinct(NormalizedName) FROM `***REMOVED***.gcp_cset_mag.FieldsOfStudy`
+SELECT distinct(NormalizedName) FROM `<cset's project id>.gcp_cset_mag.FieldsOfStudy`
 where NormalizedName like '%{{relevant_term}}%'
 ```
 ```

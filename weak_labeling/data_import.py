@@ -6,7 +6,7 @@ from os import path
 import numpy as np
 from google.cloud import bigquery
 
-project_ID = "***REMOVED***"
+project_ID = "<cset's project id>"
 client = bigquery.Client(project=project_ID)
 
 
@@ -16,7 +16,7 @@ def build_query(query_regex: str, limit: int):
                 from gcp_cset_mag.PapersWithAbstracts paper
                 left join gcp_cset_mag.PaperFieldsOfStudy paper_fos on paper.PaperId = paper_fos.PaperId
                 left join gcp_cset_mag.FieldsOfStudy fieldOfStudy on paper_fos.FieldOfStudyId = fieldOfStudy.FieldOfStudyId
-                left join `***REMOVED***.cn498_sandbox.mag_lid` lang_id on cast(paper.PaperId as string) = lang_id.id
+                left join `<cset's project id>.cn498_sandbox.mag_lid` lang_id on cast(paper.PaperId as string) = lang_id.id
             where regexp_contains(NormalizedName, {query_regex})
             and (DocType != "Dataset") and (DocType != "Patent") and (paper.Abstract is not null) and (paper.Abstract != "") and (lower(lang_id.title_lid) = "english") and (lower(lang_id.abstract_lid) = "english")
             order by rand desc limit {limit}
